@@ -32,6 +32,18 @@
     { name:"Lavender Hand Cream", code:"PRD-0005", category:"Body care", recipe:"RC-0005 · v1", cost:198, status:"In review" },
     { name:"Rose Hydration Mist", code:"PRD-0003", category:"Skincare", recipe:"RC-0003 · v4", cost:154, status:"Approved" }
   ];
+  let roles = [
+    { name:"Administrator", users:2, permissions:["All modules","User management","Role management","Approvals"] },
+    { name:"Sales Manager", users:3, permissions:["Customers","Quotations","Invoices","PDF documents"] },
+    { name:"Accounts", users:2, permissions:["Invoices","Payments","Financial reports"] },
+    { name:"Inventory", users:1, permissions:["Ingredients","Products","Weight pricing"] }
+  ];
+  let users = [
+    { name:"Ayesha Siddiqui", email:"ayesha@iffinaturals.pk", role:"Administrator", company:"Iffi Naturals (Pvt.) Ltd.", status:"Active", initials:"AS" },
+    { name:"Hamza Ali", email:"hamza@iffinaturals.pk", role:"Sales Manager", company:"Iffi Naturals (Pvt.) Ltd.", status:"Active", initials:"HA" },
+    { name:"Mariam Khan", email:"mariam@iffinaturals.pk", role:"Accounts", company:"Iffi Naturals (Pvt.) Ltd.", status:"Active", initials:"MK" },
+    { name:"Usman Tariq", email:"usman@iffilabs.pk", role:"Inventory", company:"Iffi Labs", status:"Inactive", initials:"UT" }
+  ];
   const slabs = [
     { min:1,max:5,label:"1–5 kg",unit:790 },
     { min:6,max:10,label:"6–10 kg",unit:720 },
@@ -67,6 +79,7 @@
   let currentPage = "dashboard";
   let selectedInvoice = null;
   let ingredientRows = [];
+  let quoteProductRows = [];
   let toastBootstrap;
   const app = document.getElementById("app");
   const money = n => "Rs " + Number(n || 0).toLocaleString("en-PK", { maximumFractionDigits:0 });
@@ -93,6 +106,7 @@
           <div class="nav-caption">Sales & finance</div>${navItem("quickquote","Quick Quote","bi-lightning-charge")}${navItem("quotations","Quotations","bi-file-earmark-text")}${navItem("invoices","Invoices","bi-receipt")}${navItem("payments","Payments","bi-wallet2")}
           <div class="nav-caption">Catalogue</div>${navItem("customers","Customers","bi-people")}${navItem("vendors","Vendors","bi-truck")}${navItem("products","Products & recipes","bi-box-seam")}${navItem("ingredients","Ingredients","bi-droplet")}${navItem("slabs","Weight pricing","bi-sliders")}
           <div class="nav-caption">Administration</div>${navItem("companies","Companies","bi-buildings")}
+          ${navItem("users","Users & roles","bi-person-gear")}
         </div>
         <div class="side-bottom"><div class="workspace-note"><div class="avatar">AS</div><div><div style="font-size:11px;font-weight:700">Ayesha Siddiqui</div><div style="font-size:10px;color:#87928c">Company administrator</div></div><i class="bi bi-three-dots ms-auto text-secondary"></i></div></div>
       </aside>
@@ -133,7 +147,7 @@
   function statCard(label,value,icon,foot,trend) { return `<div class="card-panel stat-card"><div class="stat-top"><span>${label}</span><span class="stat-icon"><i class="bi ${icon}"></i></span></div><div class="stat-value">${value}</div><div class="stat-foot">${trend?`<span class="trend"><i class="bi bi-arrow-up-right"></i> ${foot.split(" ")[0]}</span>${foot.substring(foot.indexOf(" "))}`:foot}</div></div>`; }
   function activity(icon,text,time) { return `<div class="activity-item"><div class="activity-icon"><i class="bi ${icon}"></i></div><div class="activity-copy">${text}</div><span class="activity-time">${time}</span></div>`; }
   function quoteTable(rows) {
-    return `<div class="table-wrap"><table class="table"><thead><tr><th>Quotation</th><th>Customer</th><th>Product</th><th>Date</th><th>Value</th><th>Status</th></tr></thead><tbody>${rows.map(q=>`<tr><td><span class="table-name">${q.ref}</span></td><td>${esc(q.customer)}</td><td>${esc(q.product)}</td><td>${q.date}</td><td class="table-name">${money(q.total)}</td><td>${statusPill(q.status)}</td></tr>`).join("")}</tbody></table></div>`;
+    return `<div class="table-wrap"><table class="table"><thead><tr><th>Quotation</th><th>Customer</th><th>Product</th><th>Date</th><th>Value</th><th>Status</th><th></th></tr></thead><tbody>${rows.map((q,i)=>`<tr><td><span class="table-name">${q.ref}</span></td><td>${esc(q.customer)}</td><td>${esc(q.product)}</td><td>${q.date}</td><td class="table-name">${money(q.total)}</td><td>${statusPill(q.status)}</td><td><button class="btn btn-light quote-pdf" data-index="${i}" title="Generate PDF"><i class="bi bi-file-earmark-pdf me-1"></i>PDF</button></td></tr>`).join("")}</tbody></table></div>`;
   }
   function genericListPage(kind) {
     const config={
@@ -177,11 +191,14 @@
     const blank={product:products[0].name,quantity:1,units:1,labour:0,design:0,packaging:0,label:0,box:0,carton:0,transport:0,selling:0};
     const data=window.quoteDraft || (window.quoteLoadedCustomer===null?blank:(hist?{...hist}:blank));
     const isLoaded=window.quoteLoadedCustomer===customer;
-    const product=products.find(x=>x.name===data.product)||products[0];
-    const ingredientCost=Math.round(product.cost*(Number(data.units)||1));
+    if(!quoteProductRows.length) quoteProductRows=[{product:data.product,quantity:Number(data.quantity)||1,units:Number(data.units)||1}];
+    const ingredientCost=quoteProductRows.reduce((sum,row)=>{
+      const p=products.find(x=>x.name===row.product)||products[0];
+      return sum+Math.round(p.cost*(Number(row.units)||1));
+    },0);
     const labour=Number(data.labour)||0, design=Number(data.design)||0, packaging=Number(data.packaging)||0, label=Number(data.label)||0, box=Number(data.box)||0, carton=Number(data.carton)||0, transport=Number(data.transport)||0;
     const total=ingredientCost+labour+design+packaging+label+box+carton+transport;
-    const units=Math.max(1,Number(data.units)||1);
+    const units=Math.max(1,quoteProductRows.reduce((sum,row)=>sum+(Number(row.units)||0),0));
     const sellUnit=Number(data.selling)||0;
     const sellTotal=sellUnit*units;
     const profit=sellTotal-total;
@@ -190,9 +207,11 @@
         <div class="quote-section"><div class="section-label"><span class="section-number">1</span>Customer & product</div><div class="row g-3">
           <div class="col-md-6"><label class="form-label">Customer <span class="text-danger">*</span></label><select class="form-select" id="quote-customer">${selectOptions(customers.filter(c=>c.status==="Active").map(c=>c.name),customer)}</select><div class="form-hint">${isLoaded?"Latest saved quote loaded as an editable copy.":"No prior quote found; a blank quote is ready."}</div></div>
           <div class="col-md-6"><label class="form-label">Quote date & time</label><input class="form-control readonly" value="18 Nov 2026 · 05:09 PM" readonly></div>
-          <div class="col-md-6"><label class="form-label">Product / recipe</label><select id="quote-product" class="form-select">${selectOptions(products.map(p=>p.name),product.name)}</select></div>
-          <div class="col-md-3"><label class="form-label">Actual weight (kg)</label><input id="quote-quantity" class="form-control" type="number" min="1" value="${data.quantity}"></div>
-          <div class="col-md-3"><label class="form-label">Total units</label><input id="quote-units" class="form-control" type="number" min="1" value="${data.units}"></div>
+          <div class="col-12">
+            <div class="split-heading mb-2"><div><div class="form-label mb-0">Products</div><div class="form-hint">Add one or more products to this quotation</div></div><button class="btn btn-light" type="button" id="quote-add-product"><i class="bi bi-plus me-1"></i>Add product</button></div>
+            <div id="quote-product-rows"></div>
+          </div>
+          <div class="col-12"><label class="form-label">Open description / additional requirement</label><textarea class="form-control" id="quote-open-field" rows="3" placeholder="Enter custom product details, specifications, special instructions or an additional requirement">${esc(data.openField||"")}</textarea></div>
         </div></div>
         <div class="quote-section"><div class="section-label"><span class="section-number">2</span>Production & packaging costs <span class="ms-auto status">${slabs.find(s=>Number(data.quantity)>=s.min&&Number(data.quantity)<=s.max)?.label||"No slab"}</span></div>
           <div class="row g-3">
@@ -221,17 +240,51 @@
     return `${heading("Finance","Invoice management","Create invoices from approved sales and keep an eye on payment status.",pageAction("New invoice","bi-plus-lg","new-invoice"))}
       <div class="invoice-summary"><div class="card-panel"><div class="mini-kpi-label">Invoice total</div><div class="mini-kpi-value">${money(invoices.reduce((a,x)=>a+x.total,0))}</div></div><div class="card-panel"><div class="mini-kpi-label">Paid</div><div class="mini-kpi-value text-success">${money(invoices.reduce((a,x)=>a+x.paid,0))}</div></div><div class="card-panel"><div class="mini-kpi-label">Outstanding</div><div class="mini-kpi-value">${money(invoices.reduce((a,x)=>a+x.total-x.paid,0))}</div></div><div class="card-panel"><div class="mini-kpi-label">Overdue</div><div class="mini-kpi-value text-danger">1 invoice</div></div></div>
       <section class="card-panel"><div class="panel-heading"><div><h3 class="panel-title">Invoices</h3><div class="panel-sub">${invoices.length} invoices · balances update when payments are allocated</div></div><div class="filter-row"><div class="search-box"><i class="bi bi-search"></i><input class="form-control" id="record-search" placeholder="Search invoices..."></div></div></div>
-      <div class="table-wrap"><table class="table" id="invoice-table"><thead><tr><th>Invoice</th><th>Customer</th><th>Issue date</th><th>Due date</th><th>Total</th><th>Balance</th><th>Status</th><th></th></tr></thead><tbody>${invoices.map((i,n)=>`<tr><td class="table-name">${i.no}</td><td>${i.customer}</td><td>${i.date}</td><td>${i.due}</td><td class="table-name">${money(i.total)}</td><td class="${i.total-i.paid?"text-danger":"text-success"}">${money(i.total-i.paid)}</td><td>${statusPill(invoiceStatus(i))}</td><td><button class="btn btn-light invoice-open" data-index="${n}">View</button></td></tr>`).join("")}</tbody></table></div></section>`;
+      <div class="table-wrap"><table class="table" id="invoice-table"><thead><tr><th>Invoice</th><th>Customer</th><th>Issue date</th><th>Due date</th><th>Total</th><th>Balance</th><th>Status</th><th></th></tr></thead><tbody>${invoices.map((i,n)=>`<tr><td class="table-name">${i.no}</td><td>${i.customer}</td><td>${i.date}</td><td>${i.due}</td><td class="table-name">${money(i.total)}</td><td class="${i.total-i.paid?"text-danger":"text-success"}">${money(i.total-i.paid)}</td><td>${statusPill(invoiceStatus(i))}</td><td><div class="d-flex gap-1"><button class="btn btn-light invoice-open" data-index="${n}">View</button><button class="btn btn-light invoice-pdf" data-index="${n}" title="Generate PDF"><i class="bi bi-file-earmark-pdf"></i></button></div></td></tr>`).join("")}</tbody></table></div></section>`;
   }
   function invoiceStatus(i) { if(i.paid>=i.total)return "Paid";if(i.paid>0)return "Partially Paid";return i.status; }
   function invoiceDetail(i) {
     const balance=i.total-i.paid;
-    return `${heading("Finance · Invoices",`Invoice ${i.no}`,`${i.customer} · Issued ${i.date}`,`<button class="btn btn-light me-1" id="back-invoices"><i class="bi bi-arrow-left me-1"></i>Back to invoices</button><button class="btn btn-primary" id="invoice-pay" ${balance<=0?"disabled":""}><i class="bi bi-wallet2 me-1"></i>Record payment</button>`)}
+    return `${heading("Finance · Invoices",`Invoice ${i.no}`,`${i.customer} · Issued ${i.date}`,`<button class="btn btn-light me-1" id="back-invoices"><i class="bi bi-arrow-left me-1"></i>Back</button><button class="btn btn-light me-1" id="detail-invoice-pdf"><i class="bi bi-file-earmark-pdf me-1"></i>Generate PDF</button><button class="btn btn-primary" id="invoice-pay" ${balance<=0?"disabled":""}><i class="bi bi-wallet2 me-1"></i>Record payment</button>`)}
       <div class="quote-layout"><section class="card-panel"><div class="panel-heading"><div><h3 class="panel-title">Invoice details</h3><div class="panel-sub">Payment due ${i.due}</div></div>${statusPill(invoiceStatus(i))}</div><div class="px-3 pb-3">
         <div class="detail-grid mb-4"><div class="detail-box"><div class="detail-label">Customer</div><div class="detail-value">${i.customer}</div></div><div class="detail-box"><div class="detail-label">Invoice date</div><div class="detail-value">${i.date}</div></div><div class="detail-box"><div class="detail-label">Due date</div><div class="detail-value">${i.due}</div></div></div>
         <div class="line-items-box"><div class="table-wrap"><table class="table"><thead><tr><th>Description</th><th>Qty</th><th>Unit price</th><th>Amount</th></tr></thead><tbody><tr><td class="table-name">${i.item.split(" · ")[0]}<span class="table-muted">Approved quotation item</span></td><td>${i.item.split(" · ")[1]?.split(" ")[0]||1}</td><td>${money(i.total/(Number(i.item.match(/\\d+/)?.[0])||1))}</td><td class="table-name">${money(i.total)}</td></tr></tbody></table></div></div>
         <div class="d-flex justify-content-end"><div style="width:250px"><div class="total-row"><span>Subtotal</span><b>${money(i.total)}</b></div><div class="total-row"><span>Tax</span><b>${money(0)}</b></div><div class="total-row grand"><span>Invoice total</span><strong>${money(i.total)}</strong></div><div class="total-row"><span>Paid</span><b class="text-success">${money(i.paid)}</b></div><div class="total-row"><span>Outstanding</span><b class="text-danger">${money(balance)}</b></div></div></div>
       </div></section><aside class="card-panel"><div class="panel-heading"><div><h3 class="panel-title">Company details</h3><div class="panel-sub">Printed on invoice</div></div></div><div class="px-3 pb-3"><div class="detail-value">${esc(activeCompany.name)}</div><div class="help-copy mt-2">${esc(activeCompany.address)}<br>NTN ${activeCompany.ntn}<br>${activeCompany.email}<br>${activeCompany.bank}</div><hr><div class="section-label">Payment history</div>${payments.filter(p=>p.invoice===i.no).length?payments.filter(p=>p.invoice===i.no).map(p=>`<div class="activity-item"><div class="activity-icon"><i class="bi bi-check2"></i></div><div class="activity-copy"><b>${money(p.amount)}</b><br>${p.method} · ${p.date}</div>${statusPill(p.status)}</div>`).join(""):`<div class="help-copy">No payments allocated yet.</div>`}</div></aside></div>`;
+  }
+  function usersRolesPage() {
+    return `${heading("Administration","User & role management","Create workspace users and assign permissions by role.",`<button class="btn btn-light me-1" id="add-role"><i class="bi bi-shield-lock me-1"></i>Add role</button><button class="btn btn-primary" id="add-user"><i class="bi bi-person-plus me-1"></i>Add user</button>`)}
+      <div class="admin-grid">
+        <section class="card-panel"><div class="panel-heading"><div><h3 class="panel-title">Users</h3><div class="panel-sub">${users.length} workspace users</div></div><div class="search-box"><i class="bi bi-search"></i><input class="form-control" id="user-search" placeholder="Search users..."></div></div>
+          <div class="table-wrap"><table class="table" id="user-table"><thead><tr><th>User</th><th>Role</th><th>Company</th><th>Status</th><th></th></tr></thead><tbody>${users.map((u,i)=>`<tr><td><div class="user-list-cell"><div class="avatar">${esc(u.initials)}</div><div><span class="table-name">${esc(u.name)}</span><span class="table-muted">${esc(u.email)}</span></div></div></td><td>${esc(u.role)}</td><td>${esc(u.company)}</td><td>${statusPill(u.status)}</td><td><button class="icon-btn edit-user" data-index="${i}" title="Edit user"><i class="bi bi-pencil"></i></button></td></tr>`).join("")}</tbody></table></div>
+        </section>
+        <section class="card-panel"><div class="panel-heading"><div><h3 class="panel-title">Roles</h3><div class="panel-sub">${roles.length} configured roles</div></div></div>
+          <div class="role-list">${roles.map((r,i)=>`<div class="role-card"><div class="role-card-heading"><div><div class="table-name">${esc(r.name)}</div><div class="table-muted">${r.users} assigned user${r.users===1?"":"s"}</div></div><button class="icon-btn edit-role" data-index="${i}" title="Edit role"><i class="bi bi-pencil"></i></button></div><div class="permission-list">${r.permissions.map(p=>`<span>${esc(p)}</span>`).join("")}</div></div>`).join("")}</div>
+        </section>
+      </div>`;
+  }
+  function openUserModal(index) {
+    const u=index===undefined?{name:"",email:"",role:roles[0].name,company:activeCompany.name,status:"Active"}:users[index];
+    modalShell(index===undefined?"Create user":"Edit user",`<div class="row g-3"><div class="col-md-6"><label class="form-label">Full name *</label><input class="form-control" id="user-name" value="${esc(u.name)}"></div><div class="col-md-6"><label class="form-label">Email address *</label><input type="email" class="form-control" id="user-email" value="${esc(u.email)}"></div><div class="col-md-6"><label class="form-label">Role *</label><select class="form-select" id="user-role">${selectOptions(roles.map(r=>r.name),u.role)}</select></div><div class="col-md-6"><label class="form-label">Company *</label><select class="form-select" id="user-company">${selectOptions(companies.map(c=>c.name),u.company)}</select></div><div class="col-md-6"><label class="form-label">Status</label><select class="form-select" id="user-status">${selectOptions(["Active","Inactive"],u.status)}</select></div>${index===undefined?`<div class="col-md-6"><label class="form-label">Temporary password *</label><input type="password" class="form-control" id="user-password" placeholder="Minimum 8 characters"></div>`:""}</div>`,"Save user",modal=>{
+      const name=document.getElementById("user-name").value.trim(),email=document.getElementById("user-email").value.trim();
+      const password=document.getElementById("user-password");
+      if(!name||!email||(password&&password.value.length<8)){showToast("Enter a name, valid email and password of at least 8 characters.");return;}
+      const record={name,email,role:document.getElementById("user-role").value,company:document.getElementById("user-company").value,status:document.getElementById("user-status").value,initials:name.split(" ").map(v=>v[0]).slice(0,2).join("").toUpperCase()};
+      if(index===undefined)users.unshift(record);else users[index]=record;
+      modal.hide();render();showToast(index===undefined?"User created successfully.":"User updated successfully.");
+    });
+  }
+  function openRoleModal(index) {
+    const r=index===undefined?{name:"",permissions:["Quotations"]}:roles[index];
+    const options=["All modules","User management","Role management","Approvals","Customers","Quotations","Invoices","Payments","PDF documents","Ingredients","Products","Weight pricing","Financial reports"];
+    modalShell(index===undefined?"Create role":"Edit role",`<div class="row g-3"><div class="col-12"><label class="form-label">Role name *</label><input class="form-control" id="role-name" value="${esc(r.name)}"></div><div class="col-12"><label class="form-label">Permissions</label><div class="permission-checks">${options.map(p=>`<label><input type="checkbox" class="role-permission" value="${esc(p)}" ${r.permissions.includes(p)?"checked":""}> ${esc(p)}</label>`).join("")}</div></div></div>`,"Save role",modal=>{
+      const name=document.getElementById("role-name").value.trim();
+      const permissions=[...document.querySelectorAll(".role-permission:checked")].map(el=>el.value);
+      if(!name||!permissions.length){showToast("Enter a role name and select at least one permission.");return;}
+      const record={name,permissions,users:index===undefined?0:roles[index].users};
+      if(index===undefined)roles.unshift(record);else roles[index]=record;
+      modal.hide();render();showToast("Role saved successfully.");
+    });
   }
   function paymentsPage() {
     return `${heading("Finance","Payment management","Record customer receipts and vendor payments with allocation references.",pageAction("Record payment","bi-plus-lg","add-payment"))}
@@ -241,27 +294,29 @@
       <div class="help-copy mt-3"><i class="bi bi-shield-lock me-1"></i>Confirmed transactions are adjusted through reversal, not deletion. Allocations cannot exceed the invoice balance.</div>`;
   }
   function render() {
-    const pages={dashboard,customers:()=>genericListPage("customers"),vendors:()=>genericListPage("vendors"),companies:()=>genericListPage("companies"),ingredients:()=>catalogPage("ingredients"),products:()=>catalogPage("products"),slabs:slabsPage,quickquote:quickQuote,quotations:quotationsPage,invoices:invoicesPage,payments:paymentsPage};
+    const pages={dashboard,customers:()=>genericListPage("customers"),vendors:()=>genericListPage("vendors"),companies:()=>genericListPage("companies"),users:usersRolesPage,ingredients:()=>catalogPage("ingredients"),products:()=>catalogPage("products"),slabs:slabsPage,quickquote:quickQuote,quotations:quotationsPage,invoices:invoicesPage,payments:paymentsPage};
     appShell((pages[currentPage]||dashboard)());
     bindCommon();
     if(currentPage==="quickquote") bindQuote();
     if(currentPage==="invoices"&&!selectedInvoice) document.querySelectorAll(".invoice-open").forEach(b=>b.onclick=()=>{selectedInvoice=invoices[Number(b.dataset.index)];render();});
-    if(currentPage==="invoices"&&selectedInvoice){document.getElementById("back-invoices").onclick=()=>{selectedInvoice=null;render();};document.getElementById("invoice-pay").onclick=()=>openPaymentModal(selectedInvoice);}
+    if(currentPage==="invoices"&&selectedInvoice){document.getElementById("back-invoices").onclick=()=>{selectedInvoice=null;render();};document.getElementById("invoice-pay").onclick=()=>openPaymentModal(selectedInvoice);document.getElementById("detail-invoice-pdf").onclick=()=>generateInvoicePdf(selectedInvoice);}
   }
   function bindCommon() {
     const bind=(id,fn)=>{const e=document.getElementById(id);if(e)e.onclick=fn;};
-    bind("dash-quote",()=>{window.quoteDraft=null;window.quoteLoadedCustomer=null;navigate("quickquote");});
+    bind("dash-quote",()=>{window.quoteDraft=null;window.quoteLoadedCustomer=null;quoteProductRows=[];navigate("quickquote");});
     bind("all-quotes",()=>navigate("quotations"));bind("activity-view",()=>navigate("quotations"));
-    bind("new-quote",()=>{window.quoteDraft=null;window.quoteLoadedCustomer=null;navigate("quickquote");});
+    bind("new-quote",()=>{window.quoteDraft=null;window.quoteLoadedCustomer=null;quoteProductRows=[];navigate("quickquote");});
     bind("open-slabs",()=>navigate("slabs"));bind("new-recipe",()=>openRecipeModal());bind("product-tab",()=>{});
     bind("add-record",()=>openMasterModal(currentPage));
     bind("add-ingredient",()=>openIngredientModal());
     bind("add-slab",()=>openSlabModal());
     bind("add-payment",()=>openPaymentModal());
     bind("new-invoice",()=>openInvoiceModal());
+    bind("add-user",()=>openUserModal());
+    bind("add-role",()=>openRoleModal());
     bind("export-list",()=>showToast("Demo export prepared — no file was downloaded."));
     bind("price-history",()=>showToast("Price history: Aloe Vera Extract · Rs 1,720 → Rs 1,850/kg."));
-    bind("reset-quote",()=>{window.quoteDraft=null;window.quoteLoadedCustomer=null;render();showToast("Quick quote reset.");});
+    bind("reset-quote",()=>{window.quoteDraft=null;window.quoteLoadedCustomer=null;quoteProductRows=[];render();showToast("Quick quote reset.");});
     bind("save-quote",saveQuote);
     const search=document.getElementById("record-search");
     if(search) search.addEventListener("input",()=>filterTable(search.value));
@@ -272,6 +327,12 @@
     document.querySelectorAll(".ingredient-edit").forEach(b=>b.onclick=()=>openIngredientModal(Number(b.dataset.index)));
     document.querySelectorAll(".slab-edit").forEach(b=>b.onclick=()=>openSlabModal(Number(b.dataset.index)));
     document.querySelectorAll(".product-edit").forEach(b=>b.onclick=()=>openRecipeModal(Number(b.dataset.index)));
+    document.querySelectorAll(".edit-user").forEach(b=>b.onclick=()=>openUserModal(Number(b.dataset.index)));
+    document.querySelectorAll(".edit-role").forEach(b=>b.onclick=()=>openRoleModal(Number(b.dataset.index)));
+    const userSearch=document.getElementById("user-search");
+    if(userSearch)userSearch.oninput=()=>document.querySelectorAll("#user-table tbody tr").forEach(row=>row.style.display=row.textContent.toLowerCase().includes(userSearch.value.toLowerCase())?"":"none");
+    document.querySelectorAll(".quote-pdf").forEach(b=>b.onclick=()=>generateQuotationPdf(quotes[Number(b.dataset.index)]||quotes[0]));
+    document.querySelectorAll(".invoice-pdf").forEach(b=>b.onclick=()=>generateInvoicePdf(invoices[Number(b.dataset.index)]));
   }
   function filterTable(q) {
     const table=document.getElementById("records-table")||document.getElementById("invoice-table")||document.getElementById("payment-table");
@@ -280,22 +341,86 @@
   }
   function bindQuote() {
     const customer=document.getElementById("quote-customer");
-    customer.onchange=()=>{const c=customer.value;const h=quoteHistory[c];window.quoteLoadedCustomer=h?c:null;window.quoteDraft=h?{...h}:{product:products[0].name,quantity:1,units:1,labour:0,design:0,packaging:0,label:0,box:0,carton:0,transport:0,selling:0};render();};
-    const ids=["product","quantity","units","labour","design","packaging","label","box","carton","transport","selling"];
-    ids.forEach(id=>{const el=document.getElementById("quote-"+id);el.addEventListener(id==="product"?"change":"change",()=>{const d=window.quoteDraft||{};d[id]=id==="product"?el.value:Number(el.value);window.quoteDraft=d;render();});});
+    customer.onchange=()=>{
+      const c=customer.value;const h=quoteHistory[c];
+      window.quoteLoadedCustomer=h?c:null;
+      window.quoteDraft=h?{...h}:{product:products[0].name,quantity:1,units:1,labour:0,design:0,packaging:0,label:0,box:0,carton:0,transport:0,selling:0};
+      quoteProductRows=[{product:window.quoteDraft.product,quantity:Number(window.quoteDraft.quantity)||1,units:Number(window.quoteDraft.units)||1}];
+      render();
+    };
+    const paint=()=>{
+      const container=document.getElementById("quote-product-rows");
+      if(!container)return;
+      container.innerHTML=quoteProductRows.map((row,i)=>`<div class="quote-product-row">
+        <div><label class="form-label">Product / recipe</label><select class="form-select quote-product-select" data-index="${i}">${selectOptions(products.map(p=>p.name),row.product)}</select></div>
+        <div><label class="form-label">Actual weight (kg)</label><input class="form-control quote-product-weight" data-index="${i}" type="number" min="1" value="${row.quantity}"></div>
+        <div><label class="form-label">Units</label><input class="form-control quote-product-units" data-index="${i}" type="number" min="1" value="${row.units}"></div>
+        <button class="icon-btn quote-product-remove" type="button" data-index="${i}" title="Remove product" ${quoteProductRows.length===1?"disabled":""}><i class="bi bi-trash"></i></button>
+      </div>`).join("");
+      container.querySelectorAll(".quote-product-select").forEach(el=>el.onchange=()=>{quoteProductRows[Number(el.dataset.index)].product=el.value;render();});
+      container.querySelectorAll(".quote-product-weight").forEach(el=>el.onchange=()=>{quoteProductRows[Number(el.dataset.index)].quantity=Number(el.value)||1;render();});
+      container.querySelectorAll(".quote-product-units").forEach(el=>el.onchange=()=>{quoteProductRows[Number(el.dataset.index)].units=Number(el.value)||1;render();});
+      container.querySelectorAll(".quote-product-remove").forEach(el=>el.onclick=()=>{if(quoteProductRows.length>1){quoteProductRows.splice(Number(el.dataset.index),1);render();}});
+    };
+    document.getElementById("quote-add-product").onclick=()=>{quoteProductRows.push({product:products[0].name,quantity:1,units:1});render();};
+    paint();
+    const openField=document.getElementById("quote-open-field");
+    openField.onchange=()=>{const d=window.quoteDraft||{};d.openField=openField.value;window.quoteDraft=d;};
+    const ids=["labour","design","packaging","label","box","carton","transport","selling"];
+    ids.forEach(id=>{const el=document.getElementById("quote-"+id);if(el)el.addEventListener("change",()=>{const d=window.quoteDraft||{};d[id]=Number(el.value)||0;window.quoteDraft=d;render();});});
+  }
+  function generateQuotationPdf(q) {
+    if(!window.jspdf?.jsPDF){showToast("PDF library is not loaded. Refresh and try again.");return;}
+    const doc=new window.jspdf.jsPDF();
+    doc.setFillColor(23,107,82);doc.rect(0,0,210,32,"F");
+    doc.setTextColor(255,255,255);doc.setFont("helvetica","bold");doc.setFontSize(20);doc.text(activeCompany.name,14,17);
+    doc.setFontSize(9);doc.setFont("helvetica","normal");doc.text("QUOTATION",14,25);
+    doc.setTextColor(29,41,37);doc.setFontSize(11);doc.text(q.ref||"Quotation",14,45);
+    doc.setFontSize(9);doc.text(`Customer: ${q.customer}`,14,53);doc.text(`Date: ${q.date}`,14,60);
+    let y=72;
+    doc.setFont("helvetica","bold");doc.text("Products / services",14,y);y+=7;
+    doc.setFont("helvetica","normal");
+    const items=q.items?.length?q.items:[{product:q.product,quantity:q.quantity,units:q.units}];
+    items.forEach((item,index)=>{
+      doc.text(`${index+1}. ${item.product}`,14,y);
+      doc.text(`${item.units} units  |  ${item.quantity} kg`,150,y);
+      y+=7;
+    });
+    if(q.openField){doc.text("Additional requirement:",14,y);y+=6;const lines=doc.splitTextToSize(q.openField,182);doc.text(lines,14,y);y+=lines.length*5+4;}
+    doc.setDrawColor(220,226,222);doc.line(14,y,196,y);y+=10;
+    doc.setFont("helvetica","bold");doc.setFontSize(12);doc.text(`Quotation total: ${money(q.total)}`,14,y);
+    doc.setFont("helvetica","normal");doc.setFontSize(8);doc.text(`${activeCompany.address}  |  NTN ${activeCompany.ntn}  |  ${activeCompany.email}`,14,280);
+    doc.save(`${q.ref}.pdf`);showToast(`PDF generated for ${q.ref}.`);
+  }
+  function generateInvoicePdf(i) {
+    if(!window.jspdf?.jsPDF){showToast("PDF library is not loaded. Refresh and try again.");return;}
+    const doc=new window.jspdf.jsPDF();
+    doc.setFillColor(23,107,82);doc.rect(0,0,210,32,"F");
+    doc.setTextColor(255,255,255);doc.setFont("helvetica","bold");doc.setFontSize(20);doc.text(activeCompany.name,14,17);
+    doc.setFontSize(9);doc.setFont("helvetica","normal");doc.text("TAX INVOICE",14,25);
+    doc.setTextColor(29,41,37);doc.setFontSize(12);doc.text(i.no,14,45);
+    doc.setFontSize(9);doc.text(`Customer: ${i.customer}`,14,53);doc.text(`Issue date: ${i.date}`,14,60);doc.text(`Due date: ${i.due}`,14,67);
+    doc.setFillColor(246,248,245);doc.rect(14,78,182,18,"F");
+    doc.setFont("helvetica","bold");doc.text(i.item,18,89);
+    doc.setFont("helvetica","normal");doc.text("Amount",150,89);doc.text(money(i.total),170,89);
+    doc.setFont("helvetica","bold");doc.text("Invoice total",14,112);doc.text(money(i.total),170,112);
+    doc.text("Paid",14,120);doc.text(money(i.paid),170,120);
+    doc.text("Outstanding",14,128);doc.text(money(i.total-i.paid),170,128);
+    doc.setFont("helvetica","normal");doc.setFontSize(8);doc.text(`${activeCompany.address}  |  NTN ${activeCompany.ntn}  |  ${activeCompany.bank}`,14,280);
+    doc.save(`${i.no}.pdf`);showToast(`PDF generated for ${i.no}.`);
   }
   function saveQuote() {
     const customer=document.getElementById("quote-customer").value;
-    const product=document.getElementById("quote-product").value;
-    const quantity=Number(document.getElementById("quote-quantity").value);
-    const units=Number(document.getElementById("quote-units").value);
-    if(!customer||!product||quantity<=0||units<=0){showToast("Complete customer, product, weight and units before saving.");return;}
+    if(!customer||quoteProductRows.some(r=>!r.product||r.quantity<=0||r.units<=0)){showToast("Complete customer, product, weight and units before saving.");return;}
     const fields=["labour","design","packaging","label","box","carton","transport","selling"];
-    const d={customer,product,quantity,units};fields.forEach(k=>d[k]=Number(document.getElementById("quote-"+k).value)||0);
-    const p=products.find(x=>x.name===product);const total=(p.cost*units)+d.labour+d.design+d.packaging+d.label+d.box+d.carton+d.transport;
+    const d={customer,openField:document.getElementById("quote-open-field").value.trim(),items:[...quoteProductRows]};
+    fields.forEach(k=>d[k]=Number(document.getElementById("quote-"+k).value)||0);
+    const units=quoteProductRows.reduce((sum,r)=>sum+(Number(r.units)||0),0);
+    const product=quoteProductRows.length===1?quoteProductRows[0].product:`${quoteProductRows.length} products`;
+    const quantity=quoteProductRows.reduce((sum,r)=>sum+(Number(r.quantity)||0),0);
     const ref=`QT-2026-${String(49+quotes.length-5).padStart(4,"0")}`;
-    quotes.unshift({ref,customer,product,quantity,units,date:"18 Nov 2026",total:Math.round(d.selling*units),status:"Draft",recipe:product});
-    window.quoteDraft=null;window.quoteLoadedCustomer=null;showToast(`Quotation ${ref} saved as a new draft.`);navigate("quotations");
+    quotes.unshift({ref,customer,product,quantity,units,date:"18 Nov 2026",total:Math.round(d.selling*units),status:"Draft",recipe:product,items:d.items,openField:d.openField});
+    window.quoteDraft=null;window.quoteLoadedCustomer=null;quoteProductRows=[];showToast(`Quotation ${ref} saved as a new draft.`);navigate("quotations");
   }
   function modalShell(title,body,saveLabel,saveHandler) {
     const old=document.getElementById("active-modal");if(old)old.remove();
