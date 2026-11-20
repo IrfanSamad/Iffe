@@ -2,40 +2,27 @@
 
 ### 1. Application Overview
 
-The application will be developed using the following technology stack:
+The initial implementation baseline is:
 
--   **Backend:** PHP 8.2+ Core
--   **Database:** MySQL 8
--   **Frontend:** Bootstrap 5 , esponsive
--   **UI/UX:** Modern, responsive interface for desktop, tablet, and mobile devices
+- **Backend:** PHP 8.2+ (core PHP)
+- **Database:** MySQL 8
+- **Frontend:** Bootstrap 5, responsive
+- **UI/UX:** Modern interface for desktop, tablet, and mobile devices
+- **Assets:** Include Bootstrap, JavaScript, and CSS files in the project and serve them locally. Do not depend on external JavaScript or CSS/CDN files.
 
 ## 2. Confirmed Application Modules
 
-  -----------------------------------------------------------------------
-  \#                      Module                  Submodules / Key
-                                                  Features
-  ----------------------- ----------------------- -----------------------
-  1                       Customer Management     Customer profiles,
-                                                  contact details, and
-                                                  city
-
-  2                       Product Management      Ingredients,
-                                                  BOM/Recipes, Costing,
-                                                  and Weight-based
-                                                  Pricing
-
-  3                       Sales Management        Quick Quote, Cost
-                                                  Calculation, and
-                                                  Quotation Management
-
-  4                       Vendor Management       Vendor profiles,
-                                                  addresses, banking, and
-                                                  NTN
-
-  5                       Company Management      Company profile,
-                                                  address, NTN, banking,
-                                                  and contact details
-  -----------------------------------------------------------------------
+| # | Module | Baseline scope |
+|---|---|---|
+| 1 | Customer Management | Customer profiles, contact details, and city |
+| 2 | Product and Recipe Management | Products, ingredients, BOM/recipes, and costing |
+| 3 | Weight-Based Pricing | Configurable weight ranges and prices |
+| 4 | Sales and Quotations | Quick Quote, quotation management, and approval |
+| 5 | Sales Orders | Create orders from approved quotations |
+| 6 | Invoices and Payments | Create invoices from sales orders and track payment balances |
+| 7 | Vendor Management | Vendor profiles, addresses, banking, and NTN |
+| 8 | Company Management | Company profile, address, NTN, banking, and contact details |
+| 9 | Administration | Dashboard, users, and roles |
 
 ## 3. Functional Requirements
 
@@ -84,77 +71,62 @@ The recipe and Bill of Materials (BOM) module should support:
 
 #### 3.2.3 Weight-Based Price Management
 
-  Weight Range   Pricing
-  -------------- --------------
-  1--5 KG        Configurable
-  6--10 KG       Configurable
-  11--15 KG      Configurable
-  16--20 KG      Configurable
-  21--30 KG      Configurable
-  Above 30 KG    Configurable
+| Weight range | Pricing |
+|---|---|
+| 1–5 kg | Configurable |
+| 6–10 kg | Configurable |
+| 11–15 kg | Configurable |
+| 16–20 kg | Configurable |
+| 21–30 kg | Configurable |
+| Above 30 kg | Configurable |
 
-**Configuration note:** Pricing slabs should be configurable rather than
-hardcoded. The original ranges included an overlap at 20 KG (16--20 KG
-and 20--30 KG). This specification uses 21--30 KG to avoid the overlap;
-confirm the intended boundary before implementation.
+**Configuration note:** Pricing slabs must be configurable rather than hardcoded. The demo currently assigns exactly 20 kg to the 16–20 kg slab; confirm this boundary before production implementation.
 
 ### 3.3 Sales Management
 
 #### 3.3.1 Quick Quote
 
-The Quick Quote module should capture the following information:
+Quick Quote is the first functional baseline for the PHP/MySQL implementation. It should:
 
-  \#   Field
-  ---- ---------------------
-  1    Date and Time Stamp
-  2    Customer
-  3    Product
-  4    Quantity Range
-  5    Actual Quantity
-  6    Total Quantity
-  7    Total Units
-  8    ML / G
-  9    Per Unit
-  10   Labour Cost
-  11   Design Cost
-  12   Bottle / Jar / Tube
-  13   Label Cost
-  14   Box Cost
-  15   Carton
-  16   Transportation
-  17   Per Unit Cost
-  18   Total Cost
-
-Recommended quotation functionality:
-
--   Customer selection
--   Product and recipe selection
--   Quantity and weight selection
--   Automatic costing
--   Quotation PDF generation
--   Quotation approval workflow
--   Quotation history
+- Start with a blank customer and product entry. Customer selection is required and searchable; product, quantity, and cost entry stay disabled until an active customer is selected.
+- Initialize numeric entry fields to zero after customer selection. Reset returns the form to the blank initial state; selecting a customer does not load an older quotation.
+- Support multiple product/recipe lines, searchable product selection, product unit pricing, and selectable weight-based price slabs.
+- Capture total units, ML/G per unit, wastage in grams, and a read-only actual quantity in kilograms for each product line.
+- Calculate actual quantity as **((total units × ML/G per unit) + wastage in grams) ÷ 1,000**, rounded to three decimal places; use that displayed quantity for weight-based pricing.
+- Calculate a product-priced line as **total units × unit price**. Calculate a weight-priced line as **actual quantity in kg × selected price per kg**. Displayed line totals are rounded to whole rupees; the quotation total is the sum of those displayed line totals.
+- Capture labour, design, bottle/jar/tube, label, box, carton, and transportation costs, plus an open description/additional-requirements field.
+- Provide predictable keyboard tabbing through product, rate, quantity, size, wastage, and cost entry; read-only calculated fields are skipped.
+- Show a summary with total quantity and units, ingredient and production costs, per-unit cost, average selling price, quotation total, estimated profit, and the latest approved quotation. Estimates are exclusive of tax unless a tax requirement is agreed.
+- Capture quotation date/time and support quotation PDF generation and history.
 
 #### 3.3.2 Cost Calculation
 
-The system should calculate and present:
+The quotation should clearly distinguish cost, selling price, and profit:
 
-1.  Ingredient cost
-2.  Labour cost
-3.  Design cost
-4.  Bottle / Jar / Tube cost
-5.  Label cost
-6.  Box cost
-7.  Carton cost
-8.  Transportation cost
-9.  Total production cost
-10. Per-unit cost
-11. Selling price
-12. Profit amount and profit margin
+1. Ingredient cost is calculated from product/recipe cost and quoted units.
+2. Total cost is ingredient cost plus labour, design, packaging, label, box, carton, and transportation costs.
+3. Per-unit cost is total cost divided by total units; show zero when there are no units.
+4. Selling price is the sum of the product line totals.
+5. Estimated profit is selling price minus total cost. The displayed profit margin is profit divided by selling price; show zero when the selling price is zero.
 
-The costing formula and profit calculation method should be confirmed
-before implementation. The system should clearly distinguish cost,
-selling price, and profit.
+The production implementation must preserve the baseline calculations and record any approved change to costing or rounding rules.
+
+#### 3.3.3 Quotation Approval and Sales Orders
+
+- A saved quotation starts as a draft and can be submitted for approval.
+- Only submitted quotations can be approved.
+- Only an approved quotation can be converted to a sales order.
+- Create no more than one sales order from a quotation.
+- Copy the approved quotation's customer, products, quantities, prices, and total to the sales order.
+
+#### 3.3.4 Invoices and Payments
+
+- Create an invoice only from an uninvoiced sales order; each sales order can be invoiced once.
+- Copy the sales order's customer, line items, and total to the invoice.
+- Require an issue date and a due date that is not earlier than the issue date.
+- Track invoice status, amount paid, and outstanding balance. Support invoice viewing and PDF output.
+- Record customer receipts and vendor payments, including date, party, amount, payment method, reference, and notes.
+- Allow customer receipts to be allocated to an invoice or left unapplied. Reject allocations above the invoice balance; update paid amount, status, and balance for allocated receipts.
 
 ### 3.4 Vendor Management
 
@@ -201,15 +173,16 @@ The dashboard should display:
 
 ## 5. Recommended Development Phases
 
-  Phase     Development Scope
-  --------- --------------------------------------------
-  Phase 1   Login, Dashboard, User Roles & Permissions
-  Phase 2   Customer, Vendor & Company Management
-  Phase 3   Ingredient Management
-  Phase 4   Product, BOM & Recipe Management
-  Phase 5   Costing & Weight-Based Pricing
-  Phase 6   Quick Quote & PDF Generation
-  Phase 7   Approval Workflow & Reports
+| Phase | Development scope |
+|---|---|
+| 1 | Project foundation, login, dashboard, users, roles, and permissions |
+| 2 | Customer, vendor, and company management |
+| 3 | Ingredient management and document attachments |
+| 4 | Product, BOM, and recipe management |
+| 5 | Costing and weight-based pricing |
+| 6 | Quick Quote, quotation management, and PDF generation |
+| 7 | Quotation approval, sales orders, invoices, and payments |
+| 8 | Reports, audit history, and remaining agreed enhancements |
 
 ## 6. Recommended Data Architecture
 
@@ -229,26 +202,25 @@ The application should also maintain:
 
 ## 7. Decisions to Confirm Before Development
 
-The following points should be confirmed to avoid assumptions during
-implementation:
+Confirm these items before implementing the related production functionality:
 
-1.  Whether the same contact can be both a customer and a vendor.
-2.  Whether weight-based price slabs should be configurable by
-    administrators.
-3.  Whether the 20 KG boundary belongs to the 16--20 KG slab or the next
-    slab.
-4.  Whether recipe quantities are entered in KG, grams, or both.
-5.  The required method for calculating profit and selling price.
-6.  Who can approve quotations and whether approval limits are required.
-7.  Whether quotations should support multiple products.
-8.  Whether multiple companies and currencies are required.
-9.  Whether taxes should be included in quotation costing.
-10. Whether quotation revisions and expiry dates are required.
+1. Whether one contact can act as both a customer and a vendor.
+2. Which roles can manage weight-price slabs and prices.
+3. The 20 kg slab boundary. The demo currently assigns 20 kg to the 16–20 kg slab; confirm whether production should do the same.
+4. The units and conversions supported by recipes and ingredients.
+5. The quotation approver roles and any approval limits.
+6. Whether multiple companies require separate data access and whether currencies beyond PKR are required.
+7. Tax handling for quotations and invoices; the current quotation estimate is exclusive of tax.
+8. Quotation revisions, expiry dates, and approval/rejection history.
+9. File upload types, size limits, and storage location for ingredient documents.
 
 ## 8. Functional Baseline
 
-This document defines the initial functional scope for the Iffi ERP & Business Application. The modules and requirements
-listed above will serve as the baseline for detailed database design,
-UI/UX development, and implementation. Items listed in the decision
-section should be finalized before the related functionality is
-developed.
+- **Baseline ID:** IFFI-FB-001
+- **Version:** 1.0
+- **Recorded:** 19 November 2026
+- **Status:** Baseline for the PHP/MySQL implementation kickoff
+
+This document records the functional scope to use for database design, UI/UX, and phased implementation. The current browser demo is the reference for Quick Quote behavior and the quotation approval → sales order → invoice flow. The demo is an in-memory prototype; production behavior must persist in MySQL and enforce the agreed permissions and validations on the server.
+
+Sections 1–3 define the technology and functional baseline. Sections 4–6 are recommendations for planning and architecture, not additional confirmed requirements unless agreed. Items in Section 7 remain open and must be confirmed before implementing the related functionality. Any later change to baseline behavior should be agreed and recorded before implementation.

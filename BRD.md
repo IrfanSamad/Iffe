@@ -116,7 +116,7 @@ The system will support role-based access, multiple company profiles, active-com
 
 - The system shall maintain customer records with:
   - Name
-  - Number
+  - Mobile Number
   - Email
   - City
 - Customer records shall support create, view, update, activate, archive, and search operations.
@@ -209,6 +209,9 @@ The system will support role-based access, multiple company profiles, active-com
 - The loaded or entered values shall be recalculated after relevant field changes.
 - A quotation with incomplete required fields shall not be saved or submitted.
 - Quotation saving shall create a unique reference number for the active company.
+- The System shall pick last customer quotation details as time of customer selection.
+- Product Unit price will display on product selection
+
 
 ### FR-08 Customer-Based Quick Quote Loading
 
