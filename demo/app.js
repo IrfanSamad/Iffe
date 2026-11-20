@@ -1,8 +1,8 @@
-/* Iffi ERP browser-only prototype. All records live in memory and reset on refresh. */
+/* Iffe ERP browser-only prototype. All records live in memory and reset on refresh. */
 (() => {
   const companies = [
-    { name: "Iffi Naturals (Pvt.) Ltd.", city: "Lahore", ntn: "7128456-2", phone: "+92 42 3576 8012", email: "hello@iffinaturals.pk", bank: "HBL — Gulberg Branch", country: "Pakistan", address: "28-B, Gulberg III, Lahore" },
-    { name: "Iffi Labs", city: "Karachi", ntn: "4382190-8", phone: "+92 21 3452 0090", email: "ops@iffilabs.pk", bank: "Meezan Bank", country: "Pakistan", address: "Suite 402, Clifton, Karachi" }
+    { name: "Iffe Naturals (Pvt.) Ltd.", city: "Lahore", ntn: "7128456-2", phone: "+92 42 3576 8012", email: "hello@Iffenaturals.pk", bank: "HBL — Gulberg Branch", country: "Pakistan", address: "28-B, Gulberg III, Lahore" },
+    { name: "Iffe Labs", city: "Karachi", ntn: "4382190-8", phone: "+92 21 3452 0090", email: "ops@Iffelabs.pk", bank: "Meezan Bank", country: "Pakistan", address: "Suite 402, Clifton, Karachi" }
   ];
   let activeCompany = companies[0];
   const customers = [
@@ -39,10 +39,10 @@
     { name:"Inventory", users:1, permissions:["Ingredients","Products","Weight pricing"] }
   ];
   let users = [
-    { name:"Ayesha Siddiqui", email:"ayesha@iffinaturals.pk", role:"Administrator", company:"Iffi Naturals (Pvt.) Ltd.", status:"Active", initials:"AS" },
-    { name:"Hamza Ali", email:"hamza@iffinaturals.pk", role:"Sales Manager", company:"Iffi Naturals (Pvt.) Ltd.", status:"Active", initials:"HA" },
-    { name:"Mariam Khan", email:"mariam@iffinaturals.pk", role:"Accounts", company:"Iffi Naturals (Pvt.) Ltd.", status:"Active", initials:"MK" },
-    { name:"Usman Tariq", email:"usman@iffilabs.pk", role:"Inventory", company:"Iffi Labs", status:"Inactive", initials:"UT" }
+    { name:"Ayesha Siddiqui", email:"ayesha@Iffenaturals.pk", role:"Administrator", company:"Iffe Naturals (Pvt.) Ltd.", status:"Active", initials:"AS" },
+    { name:"Hamza Ali", email:"hamza@Iffenaturals.pk", role:"Sales Manager", company:"Iffe Naturals (Pvt.) Ltd.", status:"Active", initials:"HA" },
+    { name:"Mariam Khan", email:"mariam@Iffenaturals.pk", role:"Accounts", company:"Iffe Naturals (Pvt.) Ltd.", status:"Active", initials:"MK" },
+    { name:"Usman Tariq", email:"usman@Iffelabs.pk", role:"Inventory", company:"Iffe Labs", status:"Inactive", initials:"UT" }
   ];
   const slabs = [
     { min:1,max:5,label:"1–5 kg",unit:790 },
@@ -103,7 +103,7 @@
   function appShell(content) {
     app.innerHTML = `<div class="app-shell">
       <aside class="sidebar" id="sidebar">
-        <div class="brand"><div class="brand-mark">i</div><div><div class="brand-name">iffi</div><div class="brand-tag">Business workspace</div></div></div>
+        <div class="brand"><div class="brand-mark">i</div><div><div class="brand-name">Iffe</div><div class="brand-tag">Business workspace</div></div></div>
         <div class="side-nav">
           <div class="nav-caption">Workspace</div>${navItem("dashboard","Overview","bi-grid-1x2")}
           <div class="nav-caption">Sales & finance</div>${navItem("quickquotes","Quick Quote","bi-lightning-charge")}${navItem("quotations","Quotations","bi-file-earmark-text")}${navItem("salesorders","Sales Orders","bi-cart-check")}${navItem("invoices","Invoices","bi-receipt")}${navItem("payments","Payments","bi-wallet2")}
@@ -990,10 +990,10 @@
     document.getElementById("pay-invoice").onchange=e=>{const i=invoices.find(x=>x.no===e.target.value);if(i)document.getElementById("pay-amount").value=i.total-i.paid;};
   }
   function renderLogin() {
-    app.innerHTML=`<div class="login-screen"><section class="login-visual"><div class="brand login-logo"><div class="brand-mark" style="background:#fff;color:var(--green)">i</div><div><div class="brand-name" style="color:#fff">iffi</div><div class="brand-tag" style="color:rgba(255,255,255,.6)">Business workspace</div></div></div><div><div class="eyebrow" style="color:#b4d7c7">A calmer way to run your business</div><h1 class="login-main-title">Everything in your business, in one place.</h1><p class="login-copy">From your first customer quote to the final payment — manage your products, costs and customer relationships with clarity.</p></div><div class="login-visual-foot">© 2026 Iffi ERP · Prototype preview</div></section>
-      <section class="login-form-side"><form class="login-form" id="login-form"><div class="eyebrow">Welcome back</div><h2>Sign in to your workspace</h2><p class="page-subtitle mb-4">Use the demo account to explore the Iffi ERP prototype.</p>
-        <label class="form-label" for="login-email">Email address</label><input class="form-control mb-3" id="login-email" type="email" value="ayesha@iffinaturals.pk" required>
-        <label class="form-label" for="login-password">Password</label><div class="input-group mb-3"><input class="form-control" id="login-password" type="password" value="iffi-demo" required><button class="btn btn-light" type="button" id="toggle-password"><i class="bi bi-eye"></i></button></div>
+    app.innerHTML=`<div class="login-screen"><section class="login-visual"><div class="brand login-logo"><div class="brand-mark" style="background:#fff;color:var(--green)">i</div><div><div class="brand-name" style="color:#fff">Iffe</div><div class="brand-tag" style="color:rgba(255,255,255,.6)">Business workspace</div></div></div><div><div class="eyebrow" style="color:#b4d7c7">A calmer way to run your business</div><h1 class="login-main-title">Everything in your business, in one place.</h1><p class="login-copy">From your first customer quote to the final payment — manage your products, costs and customer relationships with clarity.</p></div><div class="login-visual-foot">© 2026 Iffe ERP · Prototype preview</div></section>
+      <section class="login-form-side"><form class="login-form" id="login-form"><div class="eyebrow">Welcome back</div><h2>Sign in to your workspace</h2><p class="page-subtitle mb-4">Use the demo account to explore the Iffe ERP prototype.</p>
+        <label class="form-label" for="login-email">Email address</label><input class="form-control mb-3" id="login-email" type="email" value="ayesha@Iffenaturals.pk" required>
+        <label class="form-label" for="login-password">Password</label><div class="input-group mb-3"><input class="form-control" id="login-password" type="password" value="Iffe-demo" required><button class="btn btn-light" type="button" id="toggle-password"><i class="bi bi-eye"></i></button></div>
         <div class="d-flex justify-content-between align-items-center mb-4"><label class="d-flex align-items-center gap-2" style="font-size:11px;color:#68746d"><input type="checkbox" checked> Remember me</label><a href="#" id="forgot-password" style="font-size:11px;color:var(--green);text-decoration:none">Forgot password?</a></div>
         <button class="btn btn-primary w-100 py-2" type="submit">Sign in <i class="bi bi-arrow-right ms-1"></i></button>
         <div class="login-demo-hint"><i class="bi bi-info-circle me-1"></i>Demo mode — any valid email and password will open the workspace. No credentials are sent or stored.</div>
